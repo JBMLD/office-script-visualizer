@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Script Visualizer & Mapper (Gold Edition)</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Header (GitHub Style, Negro y Dorado) -->
+    <header>
+        <div class="repo-header">
+            <div class="repo-title">
+                <span style="color: var(--gold); font-size: 1.4rem;">✦</span>
+                <a href="#">Benjamin</a>
+                <span style="color: var(--text-secondary);">/</span>
+                <a href="#" style="font-weight: 700; color: var(--gold-light);">office-script-visualizer</a>
+                <span class="repo-badge">Public</span>
+            </div>
+            <div class="header-actions">
+                <button class="btn" onclick="showToast('¡Gracias por tu estrella! ✦')">
+                    <span style="color: var(--gold)">★</span> Star <span class="tab-badge">24</span>
+                </button>
+                <button class="btn" onclick="window.open('https://github.com/JBMLD/office-script-visualizer', '_blank')">
+                    <span>🗂</span> Ver en Github
+                </button>
+            </div>
+        </div>
+        
+        <!-- Repo Tabs -->
+        <div class="repo-tabs">
+            <button class="tab-link active" data-tab="visualizer">
+                <span>💻</span> Analizador de Código
+            </button>
+            <button class="tab-link" data-tab="mapper">
+                <span>🔀</span> Mapeador de Columnas
+            </button>
+            <button class="tab-link" data-tab="suggestions">
+                <span>💡</span> Optimización <span class="tab-badge" id="sug-badge">1</span>
+            </button>
+            <button class="tab-link" data-tab="simulation">
+                <span>📊</span> Simulador de Excel
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Grid -->
+    <main>
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <!-- Preset Scripts Dropdown -->
+            <div class="panel">
+                <div class="panel-title">Scripts Detectados</div>
+                <ul class="preset-list" id="preset-list">
+                    <li class="preset-item active">Cargando...</li>
+                </ul>
+            </div>
+
+            <!-- Script Metadata Stats -->
+            <div class="panel">
+                <div class="panel-title">Estadísticas del Script</div>
+                <div class="stats-list">
+                    <div class="stat-item">
+                        <span class="stat-label">Hojas afectadas:</span>
+                        <span class="stat-val" id="stat-sheets">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Columnas clave:</span>
+                        <span class="stat-val" id="stat-cols">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Fila de inicio:</span>
+                        <span class="stat-val" id="stat-start-row">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Complejidad:</span>
+                        <span class="stat-val" id="stat-complexity">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Central Workspace -->
+        <div class="workspace">
+            
+            <!-- TAB 1: Code Visualizer & Dissect -->
+            <div class="tab-content active" id="visualizer-tab">
+                <div class="welcome-card panel">
+                    <div class="welcome-title">Analizador Contable de TypeScript</div>
+                    <div class="welcome-lead">
+                        Pega tus scripts de Excel (Office Scripts) en el recuadro grande de la izquierda para desglosarlos visualmente en el panel derecho. El sistema detectará las fases de ejecución del código y te permitirá explicarlas en español de manera interactiva.
+                    </div>
+                </div>
+
+                <div class="visualizer-grid margin-top">
+                    <!-- Text Area Recuadro Grande -->
+                    <div class="editor-container">
+                        <div class="editor-container-inner">
+                            <div class="editor-header">
+                                <span class="editor-title">main.ts - Office Script Editor</span>
+                                <span style="color: var(--gold); font-size: 0.8rem; font-weight: bold;">TS</span>
+                            </div>
+                            <textarea id="code-editor" class="code-textarea" spellcheck="false" placeholder="Pega tu script de TypeScript aquí..."></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Dissect Panel -->
+                    <div class="flex-column">
+                        <div class="panel-title" style="margin-left: 0.5rem;">Disección de Ejecución</div>
+                        <div class="dissect-panel" id="dissect-panel">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: Column Mapper -->
+            <div class="tab-content" id="mapper-tab">
+                <div class="panel">
+                    <div class="welcome-title">Mapeador de Encabezados de SAP</div>
+                    <div class="welcome-lead">
+                        Si SAP actualizó sus reportes y modificó el nombre de alguna columna (ej. de "Nº doc." a "N/Doc"), no necesitas editar el código manualmente. Modifica los nombres reales en el listado de abajo y el visualizador actualizará automáticamente tu script TypeScript.
+                    </div>
+
+                    <div class="mapper-container margin-top">
+                        <div class="mapper-grid">
+                            <!-- Left: Expected columns in script -->
+                            <div class="column-card">
+                                <div class="column-card-title">
+                                    <span>🔍</span> Columnas Esperadas por Script
+                                </div>
+                                <div class="column-list" id="mapper-list">
+                                    <!-- Populated by JS -->
+                                </div>
+                            </div>
+
+                            <!-- Center: Connector Arrow -->
+                            <div class="mapper-arrow">➜</div>
+
+                            <!-- Right: Simulation / Excel mapping -->
+                            <div class="column-card">
+                                <div class="column-card-title">
+                                    <span>⚙️</span> Acción de Mapeo & Actualización
+                                </div>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                                    Al presionar el botón inferior, el sistema escaneará el código de tu editor y reemplazará todas las instancias del encabezado anterior con el nuevo nombre asignado.
+                                </p>
+                                <button class="btn btn-primary" id="btn-apply-mapping" style="width: 100%; justify-content: center;">
+                                    Actualizar Script en Editor
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Optimization Suggestions -->
+            <div class="tab-content" id="suggestions-tab">
+                <div class="panel">
+                    <div class="welcome-title">Sugerencias Contables & Optimización</div>
+                    <div class="welcome-lead">
+                        Analizador de fallas comunes en reportes contables. Muestra advertencias de código rígido y permite inyectar parches inteligentes de tolerancia ante cambios en SAP.
+                    </div>
+                    
+                    <div class="suggestions-grid margin-top" id="suggestions-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: Spreadsheet Simulator -->
+            <div class="tab-content" id="simulation-tab">
+                <div class="panel">
+                    <div class="welcome-title">Simulador Visual en Tiempo Real</div>
+                    <div class="welcome-lead">
+                        Observa lo que hace el script en segundo plano sin necesidad de abrir Excel. Ejecuta una simulación visual paso a paso para ver cómo se buscan los datos, se aplican fórmulas o se formatean las filas.
+                    </div>
+
+                    <!-- Simulation Sheet Tabs -->
+                    <div class="sim-controls margin-top">
+                        <div class="repo-tabs" id="sim-sheet-tabs">
+                            <!-- Dynamic Excel tabs -->
+                        </div>
+                        <div class="sim-actions">
+                            <span class="sim-status" id="sim-status">Listo para simular.</span>
+                            <button class="btn btn-primary" id="btn-run-sim">▶ Ejecutar Simulación</button>
+                            <button class="btn" id="btn-reset-sim">↺ Reiniciar</button>
+                        </div>
+                    </div>
+
+                    <!-- Table simulator -->
+                    <div class="grid-wrapper">
+                        <table class="excel-grid" id="simulation-grid">
+                            <!-- Populated by JS -->
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Toast Messages Overlay -->
+    <div class="alert-overlay" id="toast-overlay"></div>
+
+    <!-- Application JS -->
+    <script src="presets.js"></script>
+    <script src="app.js"></script>
+    <script>
+        // Trigger mapping updates
+        document.getElementById('btn-apply-mapping').addEventListener('click', applyColumnMapping);
+    </script>
+</body>
+</html>
