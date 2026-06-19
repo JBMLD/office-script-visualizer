@@ -1,4 +1,117 @@
 const PRESET_SCRIPTS = {
+  "COBRANZA_COLORES (CONFIG_SAP).txt": `    /**
+     * Script con CONFIG_SAP para buscar "Nº doc." en "Asignación" y colorear filas hijas.
+     * Mapeado quirúrgicamente mediante AST.
+     */
+    function main(workbook: ExcelScript.Workbook) {
+        const CONFIG_SAP = {
+            version: "2.0",
+            sheets: {
+                current: { name: "Hoja Activa", role: "source" },
+                target: { name: "IVA COBRADO", role: "target" }
+            },
+            columns: {
+                nDoc: { header: "Nº doc.", description: "Número de documento SAP" },
+                iva: { header: "IVA 16%", description: "Importe del IVA" },
+                asignacion: { header: "Asignación", description: "Columna de Asignación" },
+                importe: { header: "Importe en ML", description: "Importe en Moneda Local" },
+                bcoTarget: { header: "Bco.prp.", description: "Banco propio en destino" }
+            },
+            execution: {
+                headerSearchDepth: 30,
+                startRow: "dynamic",
+                minHeaderMatches: 2
+            }
+        };
+
+        const currentSheet = workbook.getActiveWorksheet();
+        const targetSheet = workbook.getWorksheet(CONFIG_SAP.sheets.target.name);
+
+        if (!targetSheet) {
+            throw new Error("No se encontró la pestaña '" + CONFIG_SAP.sheets.target.name + "'.");
+        }
+
+        const currentRange = currentSheet.getUsedRange();
+        const targetRange = targetSheet.getUsedRange();
+
+        if (!currentRange || !targetRange) return;
+
+        const currentValues = currentRange.getValues() as string[][];
+        const targetValues = targetRange.getValues() as string[][];
+
+        // Buscar encabezados en la hoja actual
+        let colNDoc = -1;
+        let colIva = -1;
+        let headerRowCurrent = -1;
+
+        for (let i = 0; i < Math.min(CONFIG_SAP.execution.headerSearchDepth, currentValues.length); i++) {
+            const row = currentValues[i].map(h => h?.toString().trim() || "");
+            
+            const idxDoc = row.indexOf(CONFIG_SAP.columns.nDoc.header);
+            const idxIva = row.indexOf(CONFIG_SAP.columns.iva.header);
+            
+            if (idxDoc !== -1) colNDoc = idxDoc;
+            if (idxIva !== -1) colIva = idxIva;
+            
+            if (colNDoc !== -1 && colIva !== -1) {
+                headerRowCurrent = i;
+                break;
+            }
+        }
+
+        // Buscar encabezados en la hoja destino
+        let colAsignacion = -1;
+        let colImporte = -1;
+        let colBcoTarget = -1;
+        let headerRowTarget = -1;
+
+        for (let i = 0; i < Math.min(CONFIG_SAP.execution.headerSearchDepth, targetValues.length); i++) {
+            const row = targetValues[i].map(h => h?.toString().trim() || "");
+            
+            const idxAsig = row.indexOf(CONFIG_SAP.columns.asignacion.header);
+            const idxImp = row.indexOf(CONFIG_SAP.columns.importe.header);
+            const idxBco = row.indexOf(CONFIG_SAP.columns.bcoTarget.header);
+            
+            if (idxAsig !== -1) colAsignacion = idxAsig;
+            if (idxImp !== -1) colImporte = idxImp;
+            if (idxBco !== -1) colBcoTarget = idxBco;
+
+            if (colAsignacion !== -1 && colImporte !== -1) {
+                headerRowTarget = i;
+                break;
+            }
+        }
+
+        if (colNDoc === -1 || colIva === -1 || colAsignacion === -1 || colImporte === -1) {
+            throw new Error("Faltan encabezados esenciales en el libro de Excel.");
+        }
+
+        const highlightColor = "#FFFF00";
+
+        for (let i = headerRowCurrent + 1; i < currentValues.length; i++) {
+            const nDoc = currentValues[i][colNDoc].toString().trim();
+            if (!nDoc) continue;
+
+            const nDocUpper = nDoc.toUpperCase();
+            let hasMatch = false;
+
+            for (let j = headerRowTarget + 1; j < targetValues.length; j++) {
+                const asignacion = targetValues[j][colAsignacion]?.toString().trim();
+                if (!asignacion) continue;
+
+                const asigUpper = asignacion.toUpperCase();
+                if (asigUpper.includes(nDocUpper) || nDocUpper.includes(asigUpper)) {
+                    hasMatch = true;
+                    break;
+                }
+            }
+
+            if (hasMatch) {
+                currentSheet.getCell(i, colIva).getFormat().getFill().setColor(highlightColor);
+            }
+        }
+    }`,
+
   "COBRANZA_COLORES V2.txt": `    /**
     * Script reformado (MÁS DINÁMICO) para buscar "Nº doc." en "Asignación" y colorear filas hijas.
     */
@@ -70,7 +183,7 @@ const PRESET_SCRIPTS = {
 
         // Función auxiliar para extraer números verdaderos ignorando símbolos como $, MXN, espacios, etc.
         function parseDinamicNumber(val: string): number {
-            const cleanStr = val.replace(/[^0-9\\.\\-]/g, "");
+            const cleanStr = val.replace(/[^0-9\.\-]/g, "");
             return parseFloat(cleanStr);
         }
 
@@ -281,23 +394,23 @@ function main(workbook: ExcelScript.Workbook) {
                     const numRows = datosAExtraer.length;
                     const dataRowStart = filaActual + 3; 
                     const dataRowEnd = dataRowStart + numRows - 1;
-                    const lookupRange = \`'Detalle de conciliación'!\$B\$\${dataRowStart}:\$D\$\${dataRowEnd}\`;
+                    const lookupRange = `'Detalle de conciliación'!$B$${dataRowStart}:$D$${dataRowEnd}`;
                     
                     if (filaActual - 1 >= 0) {
                         detalleSheet.getCell(filaActual - 1, 2).setValue("FECHA");
                         detalleSheet.getCell(filaActual - 1, 2).getFormat().getFont().setBold(true);
-                        detalleSheet.getCell(filaActual - 1, 3).setFormula(\`=VLOOKUP(\${addressPrimeraPoliza}, \${lookupRange}, 3, FALSE)\`);
+                        detalleSheet.getCell(filaActual - 1, 3).setFormula(`=VLOOKUP(${addressPrimeraPoliza}, ${lookupRange}, 3, FALSE)`);
                         detalleSheet.getCell(filaActual - 1, 3).getFormat().getFont().setBold(true);
                         detalleSheet.getCell(filaActual - 1, 3).setNumberFormat("dd-mmm-yy");
                     }
                     
                     detalleSheet.getCell(filaActual, 2).setValue("IVA");
                     detalleSheet.getCell(filaActual, 2).getFormat().getFont().setBold(true);
-                    detalleSheet.getCell(filaActual, 3).setFormula(\`=VLOOKUP(\${addressPrimeraPoliza}, \${lookupRange}, 2, FALSE)\`);
+                    detalleSheet.getCell(filaActual, 3).setFormula(`=VLOOKUP(${addressPrimeraPoliza}, ${lookupRange}, 2, FALSE)`);
                     detalleSheet.getCell(filaActual, 3).setNumberFormat("#,##0.00");
                     detalleSheet.getCell(filaActual, 3).getFormat().getFont().setBold(true);
                     
-                    detalleSheet.getCell(filaActual, 1).setValue(\`\${hoja.getName()} \${porcentajeTexto}\`);
+                    detalleSheet.getCell(filaActual, 1).setValue(`${hoja.getName()} ${porcentajeTexto}`);
                     detalleSheet.getCell(filaActual, 1).getFormat().getFont().setBold(true);
                     
                     filaActual++;
@@ -324,10 +437,10 @@ function main(workbook: ExcelScript.Workbook) {
                             doctoVal, 
                             data.iva, 
                             data.fecha, 
-                            \`=C\${excelRow}-G\${excelRow}\`,
+                            `=C${excelRow}-G${excelRow}`,
                             "", 
-                            \`=VLOOKUP(B\${excelRow}, '\${nombreAuxiliar}'!\$B:\$K, 10, FALSE)\`,
-                            \`=VLOOKUP(B\${excelRow}, '\${nombreAuxiliar}'!\$B:\$I, 8, FALSE)\`
+                            `=VLOOKUP(B${excelRow}, '${nombreAuxiliar}'!$B:$K, 10, FALSE)`,
+                            `=VLOOKUP(B${excelRow}, '${nombreAuxiliar}'!$B:$I, 8, FALSE)`
                         ]);
 
                         formatArr.push([
@@ -375,7 +488,7 @@ function main(workbook: ExcelScript.Workbook): void {
     if (data.length <= 1) return;
 
     const headers: string[] = data[0].map((h: string | number | boolean) =>
-        String(h).trim().toUpperCase().replace(/\\s+/g, ' ')
+        String(h).trim().toUpperCase().replace(/\s+/g, ' ')
     );
 
     const idxFecha: number = headers.indexOf("FECHA DE PAGO");
@@ -400,7 +513,7 @@ function main(workbook: ExcelScript.Workbook): void {
             return (dateInfo.getUTCFullYear() * 10000) + ((dateInfo.getUTCMonth() + 1) * 100) + dateInfo.getUTCDate();
         }
         if (typeof val === 'string') {
-            let s = val.replace(/[\\.\\-]/g, '/').trim();
+            let s = val.replace(/[\.\-]/g, '/').trim();
             let parts = s.split('/');
             if (parts.length === 3) {
                 let p0 = parseInt(parts[0], 10), p1 = parseInt(parts[1], 10), p2 = parseInt(parts[2], 10);
@@ -493,7 +606,7 @@ function main(workbook: ExcelScript.Workbook): void {
     const colDif = 7;
 
     for (let r = 0; r < diffData.length; r++) {
-        const valF = String(diffData[r][colCorte]).replace(/\\s+/g, '').toUpperCase();
+        const valF = String(diffData[r][colCorte]).replace(/\s+/g, '').toUpperCase();
         if (valF === "CORTEBANCARIO") {
             headerRow = r;
             break;
@@ -722,7 +835,7 @@ function main(workbook: ExcelScript.Workbook) {
         const convertirFecha = (relIdx: number, absCol: number) => {
           if (relIdx >= 0 && relIdx < finalVals[r].length) {
             const val = finalVals[r][relIdx] ? finalVals[r][relIdx].toString().trim() : "";
-            const match = val.match(/^(\\d{2})\\.(\\d{2})\\.(\\d{2,4})$/);
+            const match = val.match(/^(\d{2})\.(\d{2})\.(\d{2,4})$/);
             if (match) {
               let dia = match[1];
               let mes = match[2];
@@ -940,14 +1053,14 @@ function main(workbook: ExcelScript.Workbook) {
         const convertirFecha = (relIdx: number, absCol: number) => {
           if (relIdx >= 0 && relIdx < finalVals[r].length) {
             const val = finalVals[r][relIdx] ? finalVals[r][relIdx].toString().trim() : "";
-            const match = val.match(/^(\\d{2})\\.(\\d{2})\\.(\\d{2,4})$/);
+            const match = val.match(/^(\d{2})\.(\d{2})\.(\d{2,4})$/);
             if (match) {
               let dia = match[1];
               let mes = match[2];
               let anio = match[3];
               if (anio.length === 2) anio = "20" + anio;
               
-              const isoDate = \`\${anio}-\${mes}-\${dia}\`;
+              const isoDate = \`\${anio}-\\mes-\\dia\`;
               const celdaFecha = sheetFactura.getCell(absRow, absCol);
               celdaFecha.setValue(isoDate);
               celdaFecha.setNumberFormat("dd-mmm-yy");
@@ -1191,7 +1304,7 @@ function main(workbook: ExcelScript.Workbook) {
                 if (!nameVal) nameVal = String(valoresPartidas[i][3] || "").trim();
                 clienteActual = nameVal;
             } else {
-                clienteActual = valColA.replace(/^NOMBRE\\\\s*/i, "").trim();
+                clienteActual = valColA.replace(/^NOMBRE\\s*/i, "").trim();
             }
         }
 
@@ -1204,7 +1317,7 @@ function main(workbook: ExcelScript.Workbook) {
         const noDoc = limpiarIDRiguroso(rawNoDoc);
         const docComp = limpiarIDRiguroso(rawDocComp);
 
-        const esNumeroSAP = /^\\\\d+$/; 
+        const esNumeroSAP = /^\\d+$/; 
         
         if (esNumeroSAP.test(noDoc) && esNumeroSAP.test(docComp)) {
             const importeDesinfectado = String(rawImporte).replace(/,/g, '').replace(/ /g, '');
